@@ -14,29 +14,35 @@ import (
 func main() {
 	l := log.New(os.Stdout, "product-api", log.LstdFlags)
 
-	hh := handlers.NewHello(l)
-	gh := handlers.NewGoodBye(l)
+	// Create the handlers
+	ph := handlers.NewProducts(l)
 
+	// Create a new serve mux and register the handlers
 	sm := http.NewServeMux()
-	sm.Handle("/", hh)
-	sm.Handle("/goodbye", gh)
+	sm.Handle("/", ph)
 
+	// Create a new server
 	s := &http.Server{
-		Addr:         ":9090",
-		Handler:      sm,
-		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		Addr:         ":9090",           // Configure the bind address
+		Handler:      sm,                // Set the default handler
+		ErrorLog:     l,                 // Set the logger for the server
+		IdleTimeout:  120 * time.Second, // Max time for connections using TCP Keep-Alive
+		ReadTimeout:  5 * time.Second,   // Max time to read request from the client
+		WriteTimeout: 10 * time.Second,  // Max time to write response to the client
 	}
 
+	// Start the server
 	go func() {
+		l.Println("Starting server on port 9090...")
+
 		err := s.ListenAndServe()
 		if err != nil {
 			l.Fatal(err)
 		}
 	}()
 
-	sigChan := make(chan os.Signal)
+	// Trap the sigterm or interrupt and gracefully shutdown the server
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 	signal.Notify(sigChan, os.Kill)
 
